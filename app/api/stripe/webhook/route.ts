@@ -5,7 +5,8 @@ import { headers } from 'next/headers';
 
 export async function POST(req: Request) {
     const body = await req.text();
-    const sig = headers().get('stripe-signature') as string;
+    const headersList = await headers();
+    const sig = headersList.get('stripe-signature') as string;
 
     let event;
 
@@ -19,18 +20,20 @@ export async function POST(req: Request) {
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object as any;
-        const userId = session.metadata.userId;
+        const userId = session.metadata?.userId;
 
-        await supabaseAdmin
-            .from('subscriptions')
-            .upsert({
-                user_id: userId,
-                plan: 'premium',
-                status: 'active',
-                stripe_customer_id: session.customer,
-                stripe_subscription_id: session.subscription,
-                current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Mock end date
-            });
+        if (userId) {
+            await supabaseAdmin
+                .from('subscriptions')
+                .upsert({
+                    user_id: userId,
+                    plan: 'premium',
+                    status: 'active',
+                    stripe_customer_id: session.customer,
+                    stripe_subscription_id: session.subscription,
+                    current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                });
+        }
     }
 
     if (event.type === 'customer.subscription.deleted') {
