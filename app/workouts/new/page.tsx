@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/hooks/use-user';
 import { computeDailySummary } from '@/lib/utils/daily-summary';
@@ -16,30 +14,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Loader2, Dumbbell, ChevronLeft } from 'lucide-react';
 
-const formSchema = z.object({
-    type: z.string().min(1, "Obrigatório"),
-    duration_min: z.string().transform(v => parseInt(v) || 0).refine(v => v > 0, "Duração deve ser maior que 0"),
-    kcal_burned: z.string().transform(v => parseFloat(v) || 0),
-    notes: z.string().optional(),
-});
+type WorkoutFormValues = {
+    type: string;
+    duration_min: string;
+    kcal_burned: string;
+    notes: string;
+};
 
 export default function NewWorkoutPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const { user } = useUser();
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<WorkoutFormValues>({
         defaultValues: {
             type: "musculação",
-            duration_min: "45" as any,
-            kcal_burned: "300" as any,
+            duration_min: "45",
+            kcal_burned: "300",
             notes: "",
         },
     });
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: WorkoutFormValues) {
         if (!user) return;
+
+        const duration = parseInt(values.duration_min) || 0;
+        if (duration <= 0) {
+            toast.error("Duração deve ser maior que 0");
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -51,8 +55,8 @@ export default function NewWorkoutPage() {
                     user_id: user.id,
                     date: today,
                     type: values.type,
-                    duration_min: values.duration_min,
-                    kcal_burned: values.kcal_burned,
+                    duration_min: duration,
+                    kcal_burned: parseFloat(values.kcal_burned) || 0,
                     notes: values.notes,
                 });
 

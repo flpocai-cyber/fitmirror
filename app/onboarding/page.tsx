@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,23 +13,22 @@ import { toast } from 'sonner';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { useUser } from '@/hooks/use-user';
 
-const formSchema = z.object({
-    height_cm: z.string().transform(v => parseFloat(v)).refine(v => v > 50 && v < 250, { message: "Altura inválida" }),
-    weight_kg: z.string().transform(v => parseFloat(v)).refine(v => v > 20 && v < 300, { message: "Peso inválido" }),
-    goal: z.enum(['emagrecer', 'definir', 'ganhar_massa', 'manter'], { required_error: "Selecione um objetivo" }),
-});
+type OnboardingFormValues = {
+    height_cm: string;
+    weight_kg: string;
+    goal: string;
+};
 
 export default function OnboardingPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const { user, profile, loading: authLoading } = useUser();
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<OnboardingFormValues>({
         defaultValues: {
-            height_cm: "" as any,
-            weight_kg: "" as any,
-            goal: undefined,
+            height_cm: "",
+            weight_kg: "",
+            goal: "",
         },
     });
 
@@ -39,34 +36,48 @@ export default function OnboardingPage() {
         if (!authLoading && !user) {
             router.push('/auth/login');
         } else if (profile?.goal && profile?.height_cm) {
-            // If profile is already complete, skip onboarding
             router.push('/home');
         }
     }, [user, authLoading, profile, router]);
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: OnboardingFormValues) {
         if (!user) return;
+
+        const height = parseFloat(values.height_cm);
+        const weight = parseFloat(values.weight_kg);
+
+        if (isNaN(height) || height < 50 || height > 250) {
+            toast.error("Altura inválida", { description: "Digite um valor entre 50 e 250 cm" });
+            return;
+        }
+        if (isNaN(weight) || weight < 20 || weight > 300) {
+            toast.error("Peso inválido", { description: "Digite um valor entre 20 e 300 kg" });
+            return;
+        }
+        if (!values.goal) {
+            toast.error("Selecione um objetivo");
+            return;
+        }
+
         setIsLoading(true);
 
         try {
-            // 1. Update Profile
             const { error: profileError } = await supabase
                 .from('profiles')
                 .update({
-                    height_cm: values.height_cm,
-                    goal: values.goal,
+                    height_cm: height,
+                    goal: values.goal as any,
                 })
                 .eq('id', user.id);
 
             if (profileError) throw profileError;
 
-            // 2. Insert Initial Body Metric
             const { error: metricsError } = await supabase
                 .from('body_metrics')
                 .insert({
                     user_id: user.id,
                     date: new Date().toISOString().split('T')[0],
-                    weight_kg: values.weight_kg,
+                    weight_kg: weight,
                 });
 
             if (metricsError) throw metricsError;
@@ -113,7 +124,6 @@ export default function OnboardingPage() {
                                         {...form.register("height_cm")}
                                         disabled={isLoading}
                                     />
-                                    {form.formState.errors.height_cm && <p className="text-xs text-destructive">{form.formState.errors.height_cm.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="weight_kg">Peso Atual (kg)</Label>
@@ -125,14 +135,13 @@ export default function OnboardingPage() {
                                         {...form.register("weight_kg")}
                                         disabled={isLoading}
                                     />
-                                    {form.formState.errors.weight_kg && <p className="text-xs text-destructive">{form.formState.errors.weight_kg.message}</p>}
                                 </div>
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="goal">Qual o seu objetivo?</Label>
                                 <Select
-                                    onValueChange={(v) => form.setValue("goal", v as any)}
+                                    onValueChange={(v) => form.setValue("goal", v)}
                                     disabled={isLoading}
                                 >
                                     <SelectTrigger id="goal">
@@ -145,7 +154,6 @@ export default function OnboardingPage() {
                                         <SelectItem value="manter">Manter Peso</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {form.formState.errors.goal && <p className="text-xs text-destructive">{form.formState.errors.goal.message}</p>}
                             </div>
                         </CardContent>
                         <CardFooter>
