@@ -18,12 +18,24 @@ import { Loader2, Plus, Trash2, ChevronLeft, Apple } from 'lucide-react';
 
 const itemSchema = z.object({
     name: z.string().min(1, "Obrigatório"),
-    kcal: z.string().transform(v => parseFloat(v) || 0),
-    protein: z.string().transform(v => parseFloat(v) || 0),
-    carb: z.string().transform(v => parseFloat(v) || 0),
-    fat: z.string().transform(v => parseFloat(v) || 0),
-    quantity: z.string().transform(v => parseFloat(v) || 1),
+    kcal: z.string().min(1),
+    protein: z.string().min(1),
+    carb: z.string().min(1),
+    fat: z.string().min(1),
+    quantity: z.string().min(1),
 });
+
+type ItemFormValues = {
+    type: string;
+    items: {
+        name: string;
+        kcal: string;
+        protein: string;
+        carb: string;
+        fat: string;
+        quantity: string;
+    }[];
+};
 
 const formSchema = z.object({
     type: z.string().min(1, "Selecione o tipo"),
@@ -35,11 +47,11 @@ export default function NewMealPage() {
     const router = useRouter();
     const { user } = useUser();
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<ItemFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             type: "almoço",
-            items: [{ name: "", kcal: "0" as any, protein: "0" as any, carb: "0" as any, fat: "0" as any, quantity: "1" as any }],
+            items: [{ name: "", kcal: "0", protein: "0", carb: "0", fat: "0", quantity: "1" }],
         },
     });
 
@@ -48,7 +60,7 @@ export default function NewMealPage() {
         control: form.control,
     });
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: ItemFormValues) {
         if (!user) return;
         setIsLoading(true);
 
@@ -73,11 +85,11 @@ export default function NewMealPage() {
             const itemsToInsert = values.items.map(item => ({
                 meal_id: meal.id,
                 custom_name: item.name,
-                kcal: item.kcal,
-                protein: item.protein,
-                carb: item.carb,
-                fat: item.fat,
-                quantity: item.quantity,
+                kcal: parseFloat(item.kcal) || 0,
+                protein: parseFloat(item.protein) || 0,
+                carb: parseFloat(item.carb) || 0,
+                fat: parseFloat(item.fat) || 0,
+                quantity: parseFloat(item.quantity) || 1,
             }));
 
             const { error: itemsError } = await supabase
@@ -138,7 +150,7 @@ export default function NewMealPage() {
                             variant="outline"
                             size="sm"
                             className="rounded-full gap-1 border-primary/50 text-primary"
-                            onClick={() => append({ name: "", kcal: "0" as any, protein: "0" as any, carb: "0" as any, fat: "0" as any, quantity: "1" as any })}
+                            onClick={() => append({ name: "", kcal: "0", protein: "0", carb: "0", fat: "0", quantity: "1" })}
                         >
                             <Plus className="h-4 w-4" />
                             Item
