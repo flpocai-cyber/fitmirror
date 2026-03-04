@@ -36,7 +36,7 @@ export default function FitMirrorPage() {
 
             const weight = data?.weight_kg || 65; // fall back
             setCurrentWeight(weight);
-            setProjections(calculateProjections(weight, profile.goal || 'manter'));
+            setProjections(calculateProjections(weight, profile?.goal ?? 'manter'));
         }
 
         fetchLatestWeight();
