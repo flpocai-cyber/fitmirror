@@ -7,7 +7,7 @@ import { useUser } from '@/hooks/use-user';
 import { calculateMacros, getMacroProgressPercentage } from '@/lib/utils/calculations';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Plus, Flame, Dumbbell, Apple, Info } from 'lucide-react';
+import { Loader2, Flame, Apple, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
