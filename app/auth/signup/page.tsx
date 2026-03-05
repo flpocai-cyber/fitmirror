@@ -52,10 +52,23 @@ export default function SignupPage() {
             }
 
             if (data.user) {
-                // We'll update the profile name immediately in Supabase via handle_new_user trigger
-                // which creates the row, but we can also do it here if needed.
-                // For now, let's redirect to onboarding.
-                toast.success("Conta criada! Redirecionando...");
+                // Try to auto sign-in immediately after signup
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: values.email,
+                    password: values.password,
+                });
+
+                if (signInError) {
+                    // Email confirmation is required — redirect to login with a friendly message
+                    toast.success("Conta criada!", {
+                        description: "Verifique seu e-mail para confirmar a conta e depois faça login.",
+                        duration: 6000,
+                    });
+                    router.push('/auth/login');
+                    return;
+                }
+
+                toast.success("Conta criada! Bem-vindo(a)!");
                 router.push('/onboarding');
             }
         } catch (error) {
